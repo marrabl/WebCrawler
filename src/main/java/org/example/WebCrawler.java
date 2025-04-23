@@ -15,8 +15,7 @@ public class WebCrawler {
     private final int depth;
     private final List<String> domains;
 
-    private final Set<String> visitedLinks = new HashSet<>();   // set because no duplicates allowed
-    private final List<String> outputLines = new ArrayList<>();
+    private final Set<String> visitedLinks = new HashSet<>();
 
     public WebCrawler(String url, int depth, List<String> domains) {
         this.url = url;
@@ -24,28 +23,34 @@ public class WebCrawler {
         this.domains = domains;
     }
 
-    // recursive methode
     public void run() {
-        crawl(0, url);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("report.md"))) {
+            crawl(0, url, writer);
+            System.out.println("Crawling complete.");
+        } catch (IOException e) {
+            System.err.println("Error writing report: " + e.getMessage());
+        }
     }
 
-    private void crawl(int currentDepth, String url) {
+    private void crawl(int currentDepth, String url, BufferedWriter writer) throws IOException {
         if (currentDepth > depth || visitedLinks.contains(url) || !isDomainAllowed(url)) {
             return;
         }
 
         visitedLinks.add(url);
-
         Document doc = request(url);
+
+        writer.write(formatOutput(url, doc != null));
+        writer.newLine();
+        writer.flush();
+
         if (doc != null) {
             for (Element link : doc.select("a[href]")) {
-
                 String nextLink = link.absUrl("href");
-                crawl(currentDepth + 1, nextLink);
+                crawl(currentDepth + 1, nextLink, writer);
             }
         }
     }
-
 
     public Document request(String url) {
         try {
@@ -69,5 +74,9 @@ public class WebCrawler {
             }
         }
         return false;
+    }
+
+    public String formatOutput(String url, boolean success) {
+        return success ? "- " + url : "- ~~" + url + "~~ (broken link)";
     }
 }
