@@ -41,7 +41,7 @@ public class WebCrawler {
         visitedLinks.add(url);
         Document doc = fetchDocument(url);
 
-        writer.write(formatOutput(url, doc != null));
+        writer.write(formatOutput(url, doc, currentDepth,doc != null ));
         writer.newLine();
         writer.flush();
 
@@ -77,7 +77,37 @@ public class WebCrawler {
         return false;
     }
 
-    public String formatOutput(String url, boolean success) {
-        return success ? "- " + url : "- ~~" + url + "~~ (broken link)";
+    private String formatOutput(String url, Document doc, int depth, boolean isSuccessful) {
+        StringBuilder output = new StringBuilder();
+
+        String indent = "-->".repeat(depth);
+
+        if (isSuccessful) {
+            output.append("<br>").append(indent).append(" link to <a>").append(url).append("</a>");
+            if (doc != null) {
+                output.append("\n<br>depth: ").append(depth);
+                output.append("\n").append(extractHeadings(doc, depth));
+            }
+        } else {
+            output.append("<br>").append(indent).append(" broken link <a>").append(url).append("</a>");
+        }
+
+        return output.toString();
     }
+
+    private String extractHeadings(Document doc, int depth) {
+        StringBuilder headingsOutput = new StringBuilder();
+        String indent = "# ".repeat(depth);
+
+        for (int level = 1; level <= 3; level++) {
+            for (Element heading : doc.select("h" + level)) {
+                String prefix = "#".repeat(level);
+                String adjustedPrefix = indent + prefix;
+                headingsOutput.append(adjustedPrefix).append(" ").append(heading.text()).append("\n");
+            }
+        }
+
+        return headingsOutput.toString().trim();
+    }
+
 }
