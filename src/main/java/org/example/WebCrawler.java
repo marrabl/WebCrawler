@@ -12,14 +12,14 @@ import java.util.*;
 
 public class WebCrawler {
     private final String url;
-    private final int depth;
+    private final int maxDepth;
     private final List<String> domains;
 
     private final Set<String> visitedLinks = new HashSet<>();
 
-    public WebCrawler(String url, int depth, List<String> domains) {
+    public WebCrawler(String url, int maxDepth, List<String> domains) {
         this.url = url;
-        this.depth = depth;
+        this.maxDepth = maxDepth;
         this.domains = domains;
     }
 
@@ -27,18 +27,19 @@ public class WebCrawler {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("report.md"))) {
             crawl(0, url, writer);
             System.out.println("Crawling complete.");
+
         } catch (IOException e) {
             System.err.println("Error writing report: " + e.getMessage());
         }
     }
 
     private void crawl(int currentDepth, String url, BufferedWriter writer) throws IOException {
-        if (currentDepth > depth || visitedLinks.contains(url) || !isDomainAllowed(url)) {
+        if (currentDepth > maxDepth || visitedLinks.contains(url) || !isDomainAllowed(url)) {
             return;
         }
 
         visitedLinks.add(url);
-        Document doc = request(url);
+        Document doc = fetchDocument(url);
 
         writer.write(formatOutput(url, doc != null));
         writer.newLine();
@@ -52,7 +53,7 @@ public class WebCrawler {
         }
     }
 
-    public Document request(String url) {
+    public Document fetchDocument(String url) {
         try {
             Connection con = Jsoup.connect(url);
             Document doc = con.get();
