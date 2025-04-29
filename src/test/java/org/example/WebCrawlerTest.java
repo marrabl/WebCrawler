@@ -26,7 +26,7 @@ public class WebCrawlerTest {
         webCrawler = spy(new WebCrawler("https://example.com", 2, List.of("example.com")));
     }
 
-    /*@Test
+    @Test
     public void testCrawlWritesExpectedOutput() throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Document mockDoc = new Document("https://example.com");
         Element h1 = new Element(Tag.valueOf("h1"), "").appendChild(new TextNode("Hello World"));
@@ -49,7 +49,7 @@ public class WebCrawlerTest {
 
         assertTrue(output.contains("Hello World"), "Heading should be included in output");
         assertTrue(output.contains("link to"), "Should contain link output");
-    }*/
+    }
 
 
     @Test
