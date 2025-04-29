@@ -18,7 +18,9 @@ public class WebCrawler {
 
     private final String startUrl;
     private final int maxDepth;
-    private final Set<String> allowedDomains;   // set to minimize searches
+
+    // set<string> to minimize search time
+    private final Set<String> allowedDomains;
     private final Set<String> visitedLinks = new HashSet<>();
 
     public WebCrawler(String startUrl, int maxDepth, List<String> allowedDomains) {
