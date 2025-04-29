@@ -52,12 +52,12 @@ public class WebCrawler {
 
     private void processPage(Website website, BufferedWriter writer) throws IOException {
         Document document = fetchDocument(website.getUrl());
-        boolean isSuccessful = document != null;
+        boolean isPageAccessible = document != null;
 
         website.setDocument(document);
-        writeLine(writer, formatOutput(website, document, isSuccessful));
+        writeLine(writer, formatOutput(website, document, isPageAccessible));
 
-        if (isSuccessful) {
+        if (isPageAccessible) {
             for (Element link : document.select("a[href]")) {
                 String nextUrl = link.absUrl("href");
                 Website nextWebsite = new Website(nextUrl, website.getDepth() + 1);
