@@ -29,34 +29,39 @@ public class WebCrawler {
 
     public void run() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("report.md"))) {
-            crawl(0, startUrl, writer);
+            Website startWebsite = new Website(startUrl, 0);
+
+            crawl(startWebsite, writer);
             LOGGER.info("Crawling complete.");
+
         } catch (IOException e) {
             handleException("Error writing report", e);
         }
     }
 
-    protected void crawl(int currentDepth, String url, BufferedWriter writer) throws IOException {
-        if (!shouldVisit(url, currentDepth)) return;
+    protected void crawl(Website website, BufferedWriter writer) throws IOException {
+        if (!shouldVisit(website)) return;
 
-        visitedLinks.add(url);
-        processPage(url, currentDepth, writer);
+        visitedLinks.add(website.getUrl());
+        processPage(website, writer);
     }
 
-    private boolean shouldVisit(String url, int depth) {
-        return depth <= maxDepth && !visitedLinks.contains(url) && isDomainAllowed(url);
+    private boolean shouldVisit(Website website) {
+        return website.getDepth() <= maxDepth && !visitedLinks.contains(website.getUrl()) && isDomainAllowed(website.getUrl());
     }
 
-    private void processPage(String url, int depth, BufferedWriter writer) throws IOException {
-        Document document = fetchDocument(url);
+    private void processPage(Website website, BufferedWriter writer) throws IOException {
+        Document document = fetchDocument(website.getUrl());
         boolean isSuccessful = document != null;
 
-        writeLine(writer, formatOutput(url, document, depth, isSuccessful));
+        website.setDocument(document);
+        writeLine(writer, formatOutput(website, document, isSuccessful));
 
         if (isSuccessful) {
             for (Element link : document.select("a[href]")) {
                 String nextUrl = link.absUrl("href");
-                crawl(depth + 1, nextUrl, writer);
+                Website nextWebsite = new Website(nextUrl, website.getDepth() + 1);
+                crawl(nextWebsite, writer);
             }
         }
     }
@@ -81,16 +86,16 @@ public class WebCrawler {
         return allowedDomains.stream().anyMatch(url::contains);
     }
 
-    private String formatOutput(String url, Document document, int depth, boolean isSuccessful) {
+    private String formatOutput(Website website, Document document, boolean isSuccessful) {
         StringBuilder output = new StringBuilder();
-        String depthIndicator = "-->".repeat(depth);
+        String depthIndicator = "-->".repeat(website.getDepth());
 
         if (isSuccessful) {
-            output.append("<br>").append(depthIndicator).append(" link to <a>").append(url).append("</a>");
-            output.append("\n<br>depth: ").append(depth);
-            output.append("\n").append(formatHeadings(document, depth));
+            output.append("<br>").append(depthIndicator).append(" link to <a>").append(website.getUrl()).append("</a>");
+            output.append("\n<br>depth: ").append(website.getDepth());
+            output.append("\n").append(formatHeadings(document, website.getDepth()));
         } else {
-            output.append("<br>").append(depthIndicator).append(" broken link <a>").append(url).append("</a>");
+            output.append("<br>").append(depthIndicator).append(" broken link <a>").append(website.getUrl()).append("</a>");
         }
 
         return output.toString();
@@ -119,5 +124,9 @@ public class WebCrawler {
         writer.write(content);
         writer.newLine();
         writer.flush();
+    }
+
+    private void handleException(String message, Exception e) {
+        LOGGER.log(Level.SEVERE, message, e);
     }
 }
