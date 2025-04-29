@@ -9,105 +9,135 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class WebCrawler {
-    private final String url;
-    private final int maxDepth;
-    private final List<String> domains;
 
+    private static final Logger logger = Logger.getLogger(WebCrawler.class.getName());
+
+    private final String startUrl;
+    private final int maxDepth;
+    private final List<String> allowedDomains;
     private final Set<String> visitedLinks = new HashSet<>();
 
-    public WebCrawler(String url, int maxDepth, List<String> domains) {
-        this.url = url;
+    public WebCrawler(String startUrl, int maxDepth, List<String> allowedDomains) {
+        this.startUrl = startUrl;
         this.maxDepth = maxDepth;
-        this.domains = domains;
+        this.allowedDomains = allowedDomains;
     }
 
     public void run() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("report.md"))) {
-            crawl(0, url, writer);
-            System.out.println("Crawling complete.");
+            Website rootPage = new Website(startUrl, 0);
+            crawl(rootPage, writer);
+            logger.info("Crawling complete.");
 
         } catch (IOException e) {
-            System.err.println("Error writing report: " + e.getMessage());
+            handleException("Error writing report", e);
         }
     }
 
-    protected void crawl(int currentDepth, String url, BufferedWriter writer) throws IOException {
-        if (currentDepth > maxDepth || visitedLinks.contains(url) || !isDomainAllowed(url)) {
-            return;
-        }
+    private void crawl(Website page, BufferedWriter writer) throws IOException {
+        if (!isEligibleForVisit(page)) return;
 
-        visitedLinks.add(url);
-        Document doc = fetchDocument(url);
+        visitedLinks.add(page.getUrl());
+        fetchAndSetDocument(page);
+        writeReportEntry(page, writer);
+        crawlSubPages(page, writer);
+    }
 
-        writer.write(formatOutput(url, doc, currentDepth,doc != null ));
-        writer.newLine();
-        writer.flush();
+    private void fetchAndSetDocument(Website page) {
+        Document doc = fetchDocument(page.getUrl());
+        page.setDocument(doc);
+    }
 
-        if (doc != null) {
-            for (Element link : doc.select("a[href]")) {
-                String nextLink = link.absUrl("href");
-                crawl(currentDepth + 1, nextLink, writer);
-            }
+    private void writeReportEntry(Website page, BufferedWriter writer) throws IOException {
+        boolean pageAccessible = page.getDocument() != null;
+        String output = formatOutput(page, page.getDocument(), pageAccessible);
+        writeLine(writer, output);
+    }
+
+    private void crawlSubPages(Website page, BufferedWriter writer) throws IOException {
+        Document doc = page.getDocument();
+        if (doc == null) return;
+
+        for (Element link : doc.select("a[href]")) {
+            String nextUrl = link.absUrl("href");
+            Website subPage = new Website(nextUrl, page.getDepth() + 1);
+            crawl(subPage, writer);
         }
     }
 
-    public Document fetchDocument(String url) {
+    protected Document fetchDocument(String url) {
         try {
-            Connection con = Jsoup.connect(url);
-            Document doc = con.get();
+            Connection connection = Jsoup.connect(url);
+            Document document = connection.get();
 
-            if (con.response().statusCode() == 200) {
-                return doc;
+            if (connection.response().statusCode() == 200) {
+                return document;
+            } else {
+                logger.warning("No 200 response for URL: " + url);
             }
-
         } catch (IOException e) {
-            System.err.println("Error requesting " + url + ": " + e.getMessage());
+            handleException("Error requesting URL: " + url, e);
         }
         return null;
     }
 
-    public boolean isDomainAllowed(String url) {
-        for (String domain : domains) {
-            if (url.contains(domain)) {
-                return true;
-            }
-        }
-        return false;
+    protected boolean isDomainAllowed(String url) {
+        return allowedDomains.stream().anyMatch(url::contains);
     }
 
-    private String formatOutput(String url, Document doc, int depth, boolean isSuccessful) {
+    private boolean isEligibleForVisit(Website page) {
+        return page.getDepth() <= maxDepth &&
+                !visitedLinks.contains(page.getUrl()) &&
+                isDomainAllowed(page.getUrl());
+    }
+
+    private String formatOutput(Website page, Document doc, boolean isPageValid) {
         StringBuilder output = new StringBuilder();
+        String depthArrow = "-->".repeat(page.getDepth());
 
-        String indent = "-->".repeat(depth);
-
-        if (isSuccessful) {
-            output.append("<br>").append(indent).append(" link to <a>").append(url).append("</a>");
-            if (doc != null) {
-                output.append("\n<br>depth: ").append(depth);
-                output.append("\n").append(extractHeadings(doc, depth));
-            }
+        if (isPageValid) {
+            output.append("<br>").append(depthArrow).append(" link to <a>")
+                    .append(page.getUrl()).append("</a>");
+            output.append("\n<br>depth: ").append(page.getDepth());
+            output.append("\n").append(formatHeadings(doc, page.getDepth()));
         } else {
-            output.append("<br>").append(indent).append(" broken link <a>").append(url).append("</a>");
+            output.append("<br>").append(depthArrow).append(" broken link <a>")
+                    .append(page.getUrl()).append("</a>");
         }
 
         return output.toString();
     }
 
-    private String extractHeadings(Document doc, int depth) {
-        StringBuilder headingsOutput = new StringBuilder();
-        String indent = "# ".repeat(depth);
+    private String formatHeadings(Document document, int depth) {
+        StringBuilder formattedHeadings = new StringBuilder();
+        String baseIndent = "# ".repeat(depth);
 
-        for (int level = 1; level <= 3; level++) {
-            for (Element heading : doc.select("h" + level)) {
-                String prefix = "#".repeat(level);
-                String adjustedPrefix = indent + prefix;
-                headingsOutput.append(adjustedPrefix).append(" ").append(heading.text()).append("\n");
+        for (int level = 1; level <= 6; level++) {
+            for (Element heading : document.select("h" + level)) {
+                String headingPrefix = "#".repeat(level);
+                formattedHeadings
+                        .append("\n")
+                        .append(baseIndent)
+                        .append(headingPrefix)
+                        .append(" ")
+                        .append(heading.text());
             }
         }
 
-        return headingsOutput.toString().trim();
+        return formattedHeadings.toString().trim();
     }
 
+    private void writeLine(BufferedWriter writer, String content) throws IOException {
+        writer.write(content);
+        writer.newLine();
+        writer.flush();
+    }
+
+    private void handleException(String message, Exception e) {
+        logger.log(Level.SEVERE, message, e);
+    }
 }
