@@ -75,9 +75,7 @@ public class WebCrawler {
     }
 
     private boolean isEligibleForVisit(Website page) {
-        return page.getDepth() <= maxDepth &&
-                !visitedLinks.contains(page.getUrl()) &&
-                isDomainAllowed(page.getUrl());
+        return page.getDepth() <= maxDepth && !visitedLinks.contains(page.getUrl()) && isDomainAllowed(page.getUrl());
     }
 
     // writes formatted entry to the report file
