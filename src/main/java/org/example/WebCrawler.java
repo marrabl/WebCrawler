@@ -9,8 +9,12 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class WebCrawler {
+
+    private static final Logger LOGGER = Logger.getLogger(WebCrawler.class.getName());
 
     private final String startUrl;
     private final int maxDepth;
@@ -26,10 +30,9 @@ public class WebCrawler {
     public void run() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("report.md"))) {
             crawl(0, startUrl, writer);
-            System.out.println("Crawling complete.");
-
+            LOGGER.info("Crawling complete.");
         } catch (IOException e) {
-            System.err.println("Error writing report: " + e.getMessage());
+            handleException("Error writing report", e);
         }
     }
 
@@ -58,21 +61,23 @@ public class WebCrawler {
         }
     }
 
-    private Document fetchDocument(String url) {
+    public Document fetchDocument(String url) {
         try {
             Connection connection = Jsoup.connect(url);
             Document document = connection.get();
 
             if (connection.response().statusCode() == 200) {
                 return document;
+            } else {
+                LOGGER.warning("Non-200 response for URL: " + url);
             }
         } catch (IOException e) {
-            System.err.println("Error requesting " + url + ": " + e.getMessage());
+            handleException("Error requesting URL: " + url, e);
         }
         return null;
     }
 
-    private boolean isDomainAllowed(String url) {
+    public boolean isDomainAllowed(String url) {
         return allowedDomains.stream().anyMatch(url::contains);
     }
 
