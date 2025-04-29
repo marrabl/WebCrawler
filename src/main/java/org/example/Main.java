@@ -11,10 +11,17 @@ public class Main {
         }
 
         String url = args[0];
-        int depth = Integer.parseInt(args[1]);
-        List<String> domains = Arrays.asList(args[2].split(","));
+        int depth;
 
+        try {
+            depth = Integer.parseInt(args[1]);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Depth has to be an integer.");
+        }
+
+        List<String> domains = Arrays.asList(args[2].split(","));
         WebCrawler crawler = new WebCrawler(url, depth, domains);
+
         crawler.run();
     }
 }
