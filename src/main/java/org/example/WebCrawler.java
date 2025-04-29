@@ -39,7 +39,7 @@ public class WebCrawler {
         }
     }
 
-    protected void crawl(Website website, BufferedWriter writer) throws IOException {
+    private void crawl(Website website, BufferedWriter writer) throws IOException {
         if (!shouldVisit(website)) return;
 
         visitedLinks.add(website.getUrl());
@@ -66,7 +66,7 @@ public class WebCrawler {
         }
     }
 
-    public Document fetchDocument(String url) {
+    protected Document fetchDocument(String url) {
         try {
             Connection connection = Jsoup.connect(url);
             Document document = connection.get();
@@ -74,7 +74,7 @@ public class WebCrawler {
             if (connection.response().statusCode() == 200) {
                 return document;
             } else {
-                logger.warning("Non-200 response for URL: " + url);
+                logger.warning("No 200 response for URL: " + url);
             }
         } catch (IOException e) {
             handleException("Error requesting URL: " + url, e);
@@ -82,7 +82,7 @@ public class WebCrawler {
         return null;
     }
 
-    public boolean isDomainAllowed(String url) {
+    protected boolean isDomainAllowed(String url) {
         return allowedDomains.stream().anyMatch(url::contains);
     }
 
