@@ -11,21 +11,21 @@ import java.io.IOException;
 import java.util.*;
 
 public class WebCrawler {
-    private final String url;
-    private final int maxDepth;
-    private final List<String> domains;
 
+    private final String startUrl;
+    private final int maxDepth;
+    private final List<String> allowedDomains;
     private final Set<String> visitedLinks = new HashSet<>();
 
-    public WebCrawler(String url, int maxDepth, List<String> domains) {
-        this.url = url;
+    public WebCrawler(String startUrl, int maxDepth, List<String> allowedDomains) {
+        this.startUrl = startUrl;
         this.maxDepth = maxDepth;
-        this.domains = domains;
+        this.allowedDomains = allowedDomains;
     }
 
     public void run() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("report.md"))) {
-            crawl(0, url, writer);
+            crawl(0, startUrl, writer);
             System.out.println("Crawling complete.");
 
         } catch (IOException e) {
@@ -34,80 +34,85 @@ public class WebCrawler {
     }
 
     protected void crawl(int currentDepth, String url, BufferedWriter writer) throws IOException {
-        if (currentDepth > maxDepth || visitedLinks.contains(url) || !isDomainAllowed(url)) {
-            return;
-        }
+        if (!shouldVisit(url, currentDepth)) return;
 
         visitedLinks.add(url);
-        Document doc = fetchDocument(url);
+        processPage(url, currentDepth, writer);
+    }
 
-        writer.write(formatOutput(url, doc, currentDepth,doc != null ));
-        writer.newLine();
-        writer.flush();
+    private boolean shouldVisit(String url, int depth) {
+        return depth <= maxDepth && !visitedLinks.contains(url) && isDomainAllowed(url);
+    }
 
-        if (doc != null) {
-            for (Element link : doc.select("a[href]")) {
-                String nextLink = link.absUrl("href");
-                crawl(currentDepth + 1, nextLink, writer);
+    private void processPage(String url, int depth, BufferedWriter writer) throws IOException {
+        Document document = fetchDocument(url);
+        boolean isSuccessful = document != null;
+
+        writeLine(writer, formatOutput(url, document, depth, isSuccessful));
+
+        if (isSuccessful) {
+            for (Element link : document.select("a[href]")) {
+                String nextUrl = link.absUrl("href");
+                crawl(depth + 1, nextUrl, writer);
             }
         }
     }
 
-    public Document fetchDocument(String url) {
+    private Document fetchDocument(String url) {
         try {
-            Connection con = Jsoup.connect(url);
-            Document doc = con.get();
+            Connection connection = Jsoup.connect(url);
+            Document document = connection.get();
 
-            if (con.response().statusCode() == 200) {
-                return doc;
+            if (connection.response().statusCode() == 200) {
+                return document;
             }
-
         } catch (IOException e) {
             System.err.println("Error requesting " + url + ": " + e.getMessage());
         }
         return null;
     }
 
-    public boolean isDomainAllowed(String url) {
-        for (String domain : domains) {
-            if (url.contains(domain)) {
-                return true;
-            }
-        }
-        return false;
+    private boolean isDomainAllowed(String url) {
+        return allowedDomains.stream().anyMatch(url::contains);
     }
 
-    private String formatOutput(String url, Document doc, int depth, boolean isSuccessful) {
+    private String formatOutput(String url, Document document, int depth, boolean isSuccessful) {
         StringBuilder output = new StringBuilder();
-
-        String indent = "-->".repeat(depth);
+        String depthIndicator = "-->".repeat(depth);
 
         if (isSuccessful) {
-            output.append("<br>").append(indent).append(" link to <a>").append(url).append("</a>");
-            if (doc != null) {
-                output.append("\n<br>depth: ").append(depth);
-                output.append("\n").append(extractHeadings(doc, depth));
-            }
+            output.append("<br>").append(depthIndicator).append(" link to <a>").append(url).append("</a>");
+            output.append("\n<br>depth: ").append(depth);
+            output.append("\n").append(formatHeadings(document, depth));
         } else {
-            output.append("<br>").append(indent).append(" broken link <a>").append(url).append("</a>");
+            output.append("<br>").append(depthIndicator).append(" broken link <a>").append(url).append("</a>");
         }
 
         return output.toString();
     }
 
-    private String extractHeadings(Document doc, int depth) {
-        StringBuilder headingsOutput = new StringBuilder();
-        String indent = "# ".repeat(depth);
+    private String formatHeadings(Document document, int depth) {
+        StringBuilder formattedHeadings = new StringBuilder();
+        String baseIndent = "# ".repeat(depth);
 
         for (int level = 1; level <= 3; level++) {
-            for (Element heading : doc.select("h" + level)) {
-                String prefix = "#".repeat(level);
-                String adjustedPrefix = indent + prefix;
-                headingsOutput.append(adjustedPrefix).append(" ").append(heading.text()).append("\n");
+            for (Element heading : document.select("h" + level)) {
+                String headingPrefix = "#".repeat(level);
+                formattedHeadings
+                        .append(baseIndent)
+                        .append(headingPrefix)
+                        .append(" ")
+                        .append(heading.text())
+                        .append("\n");
             }
         }
 
-        return headingsOutput.toString().trim();
+        return formattedHeadings.toString().trim();
     }
 
+    private void writeLine(BufferedWriter writer, String content) throws IOException {
+        writer.write(content);
+        writer.newLine();
+        writer.flush();
+    }
 }
