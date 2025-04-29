@@ -40,13 +40,13 @@ public class WebCrawler {
     }
 
     private void crawl(Website website, BufferedWriter writer) throws IOException {
-        if (!shouldVisit(website)) return;
+        if (!isEligibleForVisit(website)) return;
 
         visitedLinks.add(website.getUrl());
         processPage(website, writer);
     }
 
-    private boolean shouldVisit(Website website) {
+    private boolean isEligibleForVisit(Website website) {
         return website.getDepth() <= maxDepth && !visitedLinks.contains(website.getUrl()) && isDomainAllowed(website.getUrl());
     }
 
