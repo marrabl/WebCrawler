@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 
 public class WebCrawler {
 
-    private static final Logger LOGGER = Logger.getLogger(WebCrawler.class.getName());
+    private static final Logger logger = Logger.getLogger(WebCrawler.class.getName());
 
     private final String startUrl;
     private final int maxDepth;
@@ -32,7 +32,7 @@ public class WebCrawler {
             Website startWebsite = new Website(startUrl, 0);
 
             crawl(startWebsite, writer);
-            LOGGER.info("Crawling complete.");
+            logger.info("Crawling complete.");
 
         } catch (IOException e) {
             handleException("Error writing report", e);
@@ -74,7 +74,7 @@ public class WebCrawler {
             if (connection.response().statusCode() == 200) {
                 return document;
             } else {
-                LOGGER.warning("Non-200 response for URL: " + url);
+                logger.warning("Non-200 response for URL: " + url);
             }
         } catch (IOException e) {
             handleException("Error requesting URL: " + url, e);
@@ -94,6 +94,7 @@ public class WebCrawler {
             output.append("<br>").append(depthIndicator).append(" link to <a>").append(website.getUrl()).append("</a>");
             output.append("\n<br>depth: ").append(website.getDepth());
             output.append("\n").append(formatHeadings(document, website.getDepth()));
+
         } else {
             output.append("<br>").append(depthIndicator).append(" broken link <a>").append(website.getUrl()).append("</a>");
         }
@@ -105,7 +106,7 @@ public class WebCrawler {
         StringBuilder formattedHeadings = new StringBuilder();
         String baseIndent = "# ".repeat(depth);
 
-        for (int level = 1; level <= 3; level++) {
+        for (int level = 1; level <= 6; level++) {
             for (Element heading : document.select("h" + level)) {
                 String headingPrefix = "#".repeat(level);
                 formattedHeadings
@@ -127,6 +128,6 @@ public class WebCrawler {
     }
 
     private void handleException(String message, Exception e) {
-        LOGGER.log(Level.SEVERE, message, e);
+        logger.log(Level.SEVERE, message, e);
     }
 }
