@@ -29,9 +29,8 @@ public class WebCrawler {
 
     public void run() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("report.md"))) {
-            Website startWebsite = new Website(startUrl, 0);
-
-            crawl(startWebsite, writer);
+            Website rootPage = new Website(startUrl, 0);
+            crawl(rootPage, writer);
             logger.info("Crawling complete.");
 
         } catch (IOException e) {
@@ -39,30 +38,34 @@ public class WebCrawler {
         }
     }
 
-    private void crawl(Website website, BufferedWriter writer) throws IOException {
-        if (!isEligibleForVisit(website)) return;
+    private void crawl(Website page, BufferedWriter writer) throws IOException {
+        if (!isEligibleForVisit(page)) return;
 
-        visitedLinks.add(website.getUrl());
-        processPage(website, writer);
+        visitedLinks.add(page.getUrl());
+        fetchAndSetDocument(page);
+        writeReportEntry(page, writer);
+        crawlSubPages(page, writer);
     }
 
-    private boolean isEligibleForVisit(Website website) {
-        return website.getDepth() <= maxDepth && !visitedLinks.contains(website.getUrl()) && isDomainAllowed(website.getUrl());
+    private void fetchAndSetDocument(Website page) {
+        Document doc = fetchDocument(page.getUrl());
+        page.setDocument(doc);
     }
 
-    private void processPage(Website website, BufferedWriter writer) throws IOException {
-        Document document = fetchDocument(website.getUrl());
-        boolean isPageAccessible = document != null;
+    private void writeReportEntry(Website page, BufferedWriter writer) throws IOException {
+        boolean pageAccessible = page.getDocument() != null;
+        String output = formatOutput(page, page.getDocument(), pageAccessible);
+        writeLine(writer, output);
+    }
 
-        website.setDocument(document);
-        writeLine(writer, formatOutput(website, document, isPageAccessible));
+    private void crawlSubPages(Website page, BufferedWriter writer) throws IOException {
+        Document doc = page.getDocument();
+        if (doc == null) return;
 
-        if (isPageAccessible) {
-            for (Element link : document.select("a[href]")) {
-                String nextUrl = link.absUrl("href");
-                Website nextWebsite = new Website(nextUrl, website.getDepth() + 1);
-                crawl(nextWebsite, writer);
-            }
+        for (Element link : doc.select("a[href]")) {
+            String nextUrl = link.absUrl("href");
+            Website subPage = new Website(nextUrl, page.getDepth() + 1);
+            crawl(subPage, writer);
         }
     }
 
@@ -86,17 +89,24 @@ public class WebCrawler {
         return allowedDomains.stream().anyMatch(url::contains);
     }
 
-    private String formatOutput(Website website, Document document, boolean isSuccessful) {
+    private boolean isEligibleForVisit(Website page) {
+        return page.getDepth() <= maxDepth &&
+                !visitedLinks.contains(page.getUrl()) &&
+                isDomainAllowed(page.getUrl());
+    }
+
+    private String formatOutput(Website page, Document doc, boolean isPageValid) {
         StringBuilder output = new StringBuilder();
-        String depthIndicator = "-->".repeat(website.getDepth());
+        String depthArrow = "-->".repeat(page.getDepth());
 
-        if (isSuccessful) {
-            output.append("<br>").append(depthIndicator).append(" link to <a>").append(website.getUrl()).append("</a>");
-            output.append("\n<br>depth: ").append(website.getDepth());
-            output.append("\n").append(formatHeadings(document, website.getDepth()));
-
+        if (isPageValid) {
+            output.append("<br>").append(depthArrow).append(" link to <a>")
+                    .append(page.getUrl()).append("</a>");
+            output.append("\n<br>depth: ").append(page.getDepth());
+            output.append("\n").append(formatHeadings(doc, page.getDepth()));
         } else {
-            output.append("<br>").append(depthIndicator).append(" broken link <a>").append(website.getUrl()).append("</a>");
+            output.append("<br>").append(depthArrow).append(" broken link <a>")
+                    .append(page.getUrl()).append("</a>");
         }
 
         return output.toString();
@@ -110,11 +120,11 @@ public class WebCrawler {
             for (Element heading : document.select("h" + level)) {
                 String headingPrefix = "#".repeat(level);
                 formattedHeadings
+                        .append("\n")
                         .append(baseIndent)
                         .append(headingPrefix)
                         .append(" ")
-                        .append(heading.text())
-                        .append("\n");
+                        .append(heading.text());
             }
         }
 
