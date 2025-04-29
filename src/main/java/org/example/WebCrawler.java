@@ -33,7 +33,7 @@ public class WebCrawler {
         }
     }
 
-    private void crawl(int currentDepth, String url, BufferedWriter writer) throws IOException {
+    protected void crawl(int currentDepth, String url, BufferedWriter writer) throws IOException {
         if (currentDepth > maxDepth || visitedLinks.contains(url) || !isDomainAllowed(url)) {
             return;
         }
