@@ -41,7 +41,6 @@ public class WebCrawler {
         }
     }
 
-    // recursively crawls websites
     private void crawl(Website page, BufferedWriter writer) throws IOException {
         if (!isEligibleForVisit(page)) return;
 
@@ -51,7 +50,6 @@ public class WebCrawler {
         crawlSubPages(page, writer);
     }
 
-    // fetches the document for the page
     protected Document fetchDocument(String url) {
         try {
             // fetches HTML document from given url
@@ -76,6 +74,7 @@ public class WebCrawler {
         return allowedDomains.stream().anyMatch(url::contains);
     }
 
+    // checks if maxDepth is reached, a link was visited already, or URL is in the allowed domain
     private boolean isEligibleForVisit(Website page) {
         return page.getDepth() <= maxDepth && !visitedLinks.contains(page.getUrl()) && isDomainAllowed(page.getUrl());
     }
