@@ -1,19 +1,17 @@
 package org.example;
 
-import org.jsoup.nodes.Document;
-
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class Website {
 
     private final String url;
     private final int depth;
-    private Document document;
+    private Map<Integer, List<String>> headingsByLevel;
 
     public Website(String url, int depth) {
         this.url = url;
         this.depth = depth;
+        this.headingsByLevel = null;
     }
 
     public String getUrl() {
@@ -24,12 +22,11 @@ public class Website {
         return depth;
     }
 
-    public Document getDocument() {
-        return document;
+    public Map<Integer, List<String>> getHeadingsByLevel() {
+        return headingsByLevel;
     }
 
-    public void setDocument(Document document) {
-        this.document = document;
+    public void setHeadingsByLevel(Map<Integer, List<String>> headingsByLevel) {
+        this.headingsByLevel = headingsByLevel;
     }
-
 }
