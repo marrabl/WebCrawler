@@ -97,7 +97,10 @@ public class WebCrawler {
     }
 
     private void waitForCompletion() throws InterruptedException {
-        executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        boolean terminated = executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        if (!terminated) {
+            logger.warning("Executor did not terminate properly.");
+        }
     }
 
     private void taskDone() {
