@@ -30,7 +30,7 @@ public class ReportWriter implements Writer {
                 writer.flush();
 
             } catch (IOException e) {
-                logger.log(Level.SEVERE, "Fehler beim Schreiben des Reports", e);
+                logger.log(Level.SEVERE, "Error while writing report", e);
             }
         }
     }
