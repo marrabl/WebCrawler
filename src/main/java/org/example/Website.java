@@ -1,17 +1,17 @@
 package org.example;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 public class Website {
-
     private final String url;
     private final int depth;
     private Map<Integer, List<String>> headingsByLevel;
+    private List<Website> subPages;
 
     public Website(String url, int depth) {
         this.url = url;
         this.depth = depth;
-        this.headingsByLevel = null;
     }
 
     public String getUrl() {
@@ -29,4 +29,13 @@ public class Website {
     public void setHeadingsByLevel(Map<Integer, List<String>> headingsByLevel) {
         this.headingsByLevel = headingsByLevel;
     }
+
+    public List<Website> getSubPages() {
+        return subPages != null ? subPages : List.of();
+    }
+
+    public void setSubPages(List<Website> subPages) {
+        this.subPages = subPages;
+    }
+
 }
