@@ -9,25 +9,36 @@ import java.util.*;
 public class JsoupHtmlFetcher implements HtmlFetcher {
 
     @Override
-    public Document fetch(String url) throws Exception {
+    public Website fetch(String url, int depth) throws Exception {
         Document doc = Jsoup.connect(url).get();
-        if (doc.baseUri().isEmpty()) {
-            throw new Exception("Unable to fetch document from: " + url);
-        }
-        return doc;
+
+        Website site = new Website(url, depth);
+        site.setHeadingsByLevel(extractHeadings(doc));
+        site.setSubPages(extractLinks(doc, depth));
+
+        return site;
     }
 
-    public Map<Integer, List<String>> extractHeadings(Document doc) {
+    private Map<Integer, List<String>> extractHeadings(Document doc) {
         Map<Integer, List<String>> headings = new HashMap<>();
-        for (int level = 1; level <= 6; level++) {
-            List<String> texts = new ArrayList<>();
-            for (Element el : doc.select("h" + level)) {
-                texts.add(el.text());
+        for (int i = 1; i <= 6; i++) {
+            List<String> list = new ArrayList<>();
+            for (Element el : doc.select("h" + i)) {
+                list.add(el.text());
             }
-            if (!texts.isEmpty()) {
-                headings.put(level, texts);
-            }
+            headings.put(i, list);
         }
         return headings;
+    }
+
+    private List<Website> extractLinks(Document doc, int currentDepth) {
+        List<Website> links = new ArrayList<>();
+        for (Element link : doc.select("a[href]")) {
+            String absUrl = link.absUrl("href");
+            if (!absUrl.isEmpty()) {
+                links.add(new Website(absUrl, currentDepth + 1));
+            }
+        }
+        return links;
     }
 }
