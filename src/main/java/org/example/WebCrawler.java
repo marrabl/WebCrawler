@@ -67,22 +67,37 @@ public class WebCrawler {
     }
 
     private void crawl(Website page) {
-        if (!isEligibleForVisit(page)) return;
+        if (!crawlAllowed(page)) return;
 
-        if (!visitedLinks.add(page.getUrl())) return;
-
-        logger.info("[" + Thread.currentThread().getName() + "] Crawling URL: " + page.getUrl() + " at depth " + page.getDepth());
+        markAsVisited(page);
+        logPageCrawling(page);
 
         Website fetchedPage;
         try {
-            fetchedPage = fetchWebsite(page.getUrl(), page.getDepth());
+            fetchedPage = fetchWebsite(page);
         } catch (Exception e) {
             return;
         }
 
-        crawledPages.add(fetchedPage);
+        processFetchedPage(fetchedPage);
+    }
 
-        for (Website subPage : fetchedPage.getSubPages()) {
+    private boolean crawlAllowed(Website page) {
+        return isEligibleForVisit(page) && !visitedLinks.contains(page.getUrl());
+    }
+
+    private void markAsVisited(Website page) {
+        visitedLinks.add(page.getUrl());
+    }
+
+    private void logPageCrawling(Website page) {
+        logger.info("[" + Thread.currentThread().getName() + "] Crawling URL: " + page.getUrl() + " at depth " + page.getDepth());
+    }
+
+    private void processFetchedPage(Website page) {
+        crawledPages.add(page);
+
+        for (Website subPage : page.getSubPages()) {
             activeTasks.incrementAndGet();
             executor.submit(() -> {
                 try {
@@ -94,12 +109,12 @@ public class WebCrawler {
         }
     }
 
-    private Website fetchWebsite(String url, int depth) throws Exception {
+    private Website fetchWebsite(Website page) throws Exception {
         try {
-            return fetcher.fetch(url, depth);
+            return fetcher.fetch(page.getUrl(), page.getDepth());
 
         } catch (Exception e) {
-            handleException("[" + Thread.currentThread().getName() + "] Error fetching website: " + url, e);
+            handleException("[" + Thread.currentThread().getName() + "] Error fetching website: " + page.getUrl(), e);
             throw  new Exception("Website null", e);
         }
     }
