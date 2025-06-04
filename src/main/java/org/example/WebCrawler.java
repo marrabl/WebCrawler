@@ -73,8 +73,12 @@ public class WebCrawler {
 
         logger.info("[" + Thread.currentThread().getName() + "] Crawling URL: " + page.getUrl() + " at depth " + page.getDepth());
 
-        Website fetchedPage = fetchWebsite(page.getUrl(), page.getDepth());
-        if (fetchedPage == null) return;
+        Website fetchedPage;
+        try {
+            fetchedPage = fetchWebsite(page.getUrl(), page.getDepth());
+        } catch (Exception e) {
+            return;
+        }
 
         crawledPages.add(fetchedPage);
 
@@ -90,13 +94,13 @@ public class WebCrawler {
         }
     }
 
-    private Website fetchWebsite(String url, int depth) {
+    private Website fetchWebsite(String url, int depth) throws Exception {
         try {
             return fetcher.fetch(url, depth);
 
         } catch (Exception e) {
             handleException("[" + Thread.currentThread().getName() + "] Error fetching website: " + url, e);
-            return null;
+            throw  new Exception("Website null", e);
         }
     }
 
