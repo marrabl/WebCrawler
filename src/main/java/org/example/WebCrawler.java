@@ -94,6 +94,7 @@ public class WebCrawler {
         logger.info("[" + Thread.currentThread().getName() + "] Crawling URL: " + page.getUrl() + " at depth " + page.getDepth());
     }
 
+    // crawls subpages
     private void processFetchedPage(Website page) {
         crawledPages.add(page);
 
@@ -119,13 +120,17 @@ public class WebCrawler {
         }
     }
 
+    // waits until all tasks of the executor are completed
     private void waitForCompletion() throws InterruptedException {
         boolean terminated = executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+
+        // checks if executor terminated safley
         if (!terminated) {
             logger.warning("Executor did not terminate properly.");
         }
     }
 
+    // shuts the executor down
     private void taskDone() {
         if (activeTasks.decrementAndGet() == 0) {
             executor.shutdown();
