@@ -45,15 +45,7 @@ public class WebCrawler {
     // starts the crawling process, writing results to a report file
     public void run() {
         Website rootPage = new Website(startUrl, 0);
-
-        activeTasks.incrementAndGet(); // increment activeTasks and return value
-        executor.submit(() -> {
-            try {
-                crawl(rootPage);
-            } finally {
-                taskDone();
-            }
-        });
+        submitCrawlingTask(rootPage);
 
         try {
             waitForCompletion();
@@ -99,14 +91,7 @@ public class WebCrawler {
         crawledPages.add(page);
 
         for (Website subPage : page.getSubPages()) {
-            activeTasks.incrementAndGet();
-            executor.submit(() -> {
-                try {
-                    crawl(subPage);
-                } finally {
-                    taskDone();
-                }
-            });
+            submitCrawlingTask(subPage);
         }
     }
 
@@ -119,6 +104,19 @@ public class WebCrawler {
             throw  new Exception("Website null", e);
         }
     }
+
+    // submits the task to the executor
+    private void submitCrawlingTask(Website page) {
+        activeTasks.incrementAndGet();
+        executor.submit(() -> {
+            try {
+                crawl(page);
+            } finally {
+                taskDone();
+            }
+        });
+    }
+
 
     // waits until all tasks of the executor are completed
     private void waitForCompletion() throws InterruptedException {
