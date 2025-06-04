@@ -42,26 +42,38 @@ public class WebCrawler {
         }
     }
 
-    // starts the crawling process, writing results to a report file
+    // starts the crawling process
     public void run() {
-        Website rootPage = new Website(startUrl, 0);
-        submitCrawlingTask(rootPage);
+        initializeCrawling();
 
         try {
-            waitForCompletion();
-            reportWriter.write(new ArrayList<>(crawledPages));
-            logger.info("[" + Thread.currentThread().getName() + "] Crawling complete.");
-
+            writeReport();
         } catch (InterruptedException e) {
-            handleException("[" + Thread.currentThread().getName() + "] Interrupted during crawling", e);
-            Thread.currentThread().interrupt();
+            handleCrawlingInterruption(e);
         }
+    }
+
+    private void initializeCrawling() {
+        Website rootPage = new Website(startUrl, 0);
+        submitCrawlingTask(rootPage);
+    }
+
+    // writes the report after all tasks are finished
+    private void writeReport() throws InterruptedException {
+        waitForCompletion();
+        reportWriter.write(new ArrayList<>(crawledPages));
+        logger.info("[" + Thread.currentThread().getName() + "] Crawling complete.");
+    }
+
+    private void handleCrawlingInterruption(Exception e) {
+        handleException("[" + Thread.currentThread().getName() + "] Interrupted during crawling", e);
+        Thread.currentThread().interrupt();
     }
 
     private void crawl(Website page) {
         if (!crawlAllowed(page)) return;
 
-        markAsVisited(page);
+        markLinkAsVisited(page);
         logPageCrawling(page);
 
         Website fetchedPage;
@@ -74,11 +86,12 @@ public class WebCrawler {
         processFetchedPage(fetchedPage);
     }
 
+    // checks if crawling is allowed depending on domain, depth and already visited links
     private boolean crawlAllowed(Website page) {
         return isEligibleForVisit(page) && !visitedLinks.contains(page.getUrl());
     }
 
-    private void markAsVisited(Website page) {
+    private void markLinkAsVisited(Website page) {
         visitedLinks.add(page.getUrl());
     }
 
@@ -101,7 +114,7 @@ public class WebCrawler {
 
         } catch (Exception e) {
             handleException("[" + Thread.currentThread().getName() + "] Error fetching website: " + page.getUrl(), e);
-            throw  new Exception("Website null", e);
+            throw new Exception("Website null", e);
         }
     }
 
