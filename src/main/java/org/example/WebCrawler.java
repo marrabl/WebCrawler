@@ -1,14 +1,13 @@
 package org.example;
 
-import org.jsoup.Connection;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
+import org.example.Fetcher.HtmlFetcher;
+import org.example.Fetcher.JsoupHtmlFetcher;
+import org.example.Writer.ReportWriter;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -18,55 +17,149 @@ public class WebCrawler {
 
     private final String startUrl;
     private final int maxDepth;
-
-    // set<string> to minimize search time
     private final Set<String> allowedDomains;
-    private final Set<String> visitedLinks = new HashSet<>();
 
-    public WebCrawler(String startUrl, int maxDepth, List<String> allowedDomains) {
+    // ConcurrentHashMap for concurrent threads without synchronized blocks
+    private final Set<String> visitedLinks = ConcurrentHashMap.newKeySet();
+    private final Set<Website> crawledPages = ConcurrentHashMap.newKeySet();
+
+    private final ReportWriter reportWriter;
+    private final HtmlFetcher fetcher;
+
+    private final ExecutorService executor = Executors.newFixedThreadPool(50);
+    private final AtomicInteger activeTasks = new AtomicInteger(0); // thread-safe counter for active tasks
+
+    public WebCrawler(String startUrl, int maxDepth, Set<String> allowedDomains) {
         this.startUrl = startUrl;
         this.maxDepth = maxDepth;
-        this.allowedDomains = new HashSet<>(allowedDomains);
-    }
+        this.allowedDomains = allowedDomains;
+        this.fetcher = new JsoupHtmlFetcher();
 
-    // starts the crawling process, writing results to a report file
-    public void run() {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter("report.md"))) {
-            Website rootPage = new Website(startUrl, 0);
-            crawl(rootPage, writer);
-            logger.info("Crawling complete.");
-
-        } catch (IOException e) {
-            handleException("Error writing report", e);
-        }
-    }
-
-    private void crawl(Website page, BufferedWriter writer) throws IOException {
-        if (!isEligibleForVisit(page)) return;
-
-        visitedLinks.add(page.getUrl());
-        page.setDocument(fetchDocument(page.getUrl()));
-        writeReportEntry(page, writer);
-        crawlSubPages(page, writer);
-    }
-
-    protected Document fetchDocument(String url) {
         try {
-            // fetches HTML document from given url
-            Connection connection = Jsoup.connect(url);
-            Document document = connection.get();
-
-            if (connection.response().statusCode() == 200) {
-                return document;
-
-            } else {
-                logger.warning("No 200 response for URL: " + url);
-            }
-
+            this.reportWriter = new ReportWriter();
         } catch (IOException e) {
-            handleException("Error requesting URL: " + url, e);
+            throw new RuntimeException("Failed to initialize ReportWriter", e);
         }
-        return null;
+    }
+
+    // starts the crawling process
+    public void run() {
+        initializeCrawling();
+
+        try {
+            writeReport();
+
+        } catch (InterruptedException e) {
+            handleCrawlingInterruption(e);
+        }
+    }
+
+    private void initializeCrawling() {
+        Website rootPage = new Website(startUrl, 0);
+        submitCrawlingTask(rootPage);
+    }
+
+    // writes the report after all tasks are finished
+    private void writeReport() throws InterruptedException {
+        waitForCompletion();
+        reportWriter.write(new ArrayList<>(crawledPages));
+        logger.info("[" + Thread.currentThread().getName() + "] Crawling complete.");
+    }
+
+    private void handleCrawlingInterruption(Exception e) {
+        handleException("[" + Thread.currentThread().getName() + "] Interrupted during crawling", e);
+        Thread.currentThread().interrupt();
+    }
+
+    private void crawl(Website page) {
+        if (!crawlAllowed(page)) return;
+
+        markLinkAsVisited(page);
+        logPageCrawling(page);
+
+        Website fetchedPage;
+        try {
+            fetchedPage = fetchWebsite(page);
+        } catch (Exception e) {
+            return;
+        }
+
+        processFetchedPage(fetchedPage);
+    }
+
+    // checks if crawling is allowed depending on domain, depth and already visited links
+    private boolean crawlAllowed(Website page) {
+        if (visitedLinks.contains(page.getUrl())) {
+            return false;
+        }
+
+        if (isMaxDepthReached(page)) {
+            logger.info("[" + Thread.currentThread().getName() + "] Stopped crawling " + page.getUrl()
+                    + " due to max depth reached (" + page.getDepth() + " > " + maxDepth + ").");
+            return false;
+        }
+
+        if (!isDomainAllowed(page.getUrl())) {
+            logger.info("[" + Thread.currentThread().getName() + "] Stopped crawling " + page.getUrl()
+                    + " because domain is not allowed.");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isMaxDepthReached(Website page) {
+        return page.getDepth() > maxDepth;
+    }
+
+    private void markLinkAsVisited(Website page) {
+        visitedLinks.add(page.getUrl());
+    }
+
+    private void logPageCrawling(Website page) {
+        logger.info("[" + Thread.currentThread().getName() + "] Crawling URL: " + page.getUrl() + " at depth " + page.getDepth());
+    }
+
+    // crawls subpages
+    private void processFetchedPage(Website page) {
+        crawledPages.add(page);
+
+        for (Website subPage : page.getSubPages()) {
+            submitCrawlingTask(subPage);
+        }
+    }
+
+    private Website fetchWebsite(Website page) throws Exception {
+        return fetcher.fetch(page.getUrl(), page.getDepth());
+    }
+
+    // submits the task to the executor
+    private void submitCrawlingTask(Website page) {
+        activeTasks.incrementAndGet();
+        executor.submit(() -> {
+            try {
+                crawl(page);
+            } finally {
+                taskDone();
+            }
+        });
+    }
+
+
+    // waits until all tasks of the executor are completed
+    private void waitForCompletion() throws InterruptedException {
+        boolean terminated = executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+
+        // checks if executor terminated safley
+        if (!terminated) {
+            logger.warning("Executor did not terminate properly.");
+        }
+    }
+
+    // shuts the executor down
+    private void taskDone() {
+        if (activeTasks.decrementAndGet() == 0) {
+            executor.shutdown();
+        }
     }
 
     // checks if the URL is within the allowed domains
@@ -76,68 +169,7 @@ public class WebCrawler {
 
     // checks if maxDepth is reached, a link was visited already, or URL is in the allowed domain
     private boolean isEligibleForVisit(Website page) {
-        return page.getDepth() <= maxDepth && !visitedLinks.contains(page.getUrl()) && isDomainAllowed(page.getUrl());
-    }
-
-    // writes formatted entry to the report file
-    private void writeReportEntry(Website page, BufferedWriter writer) throws IOException {
-        String output = formatOutput(page, page.getDocument(), page.getDocument() != null);
-        writeLine(writer, output);
-    }
-
-    // crawls subpages (links) found on the current page
-    private void crawlSubPages(Website page, BufferedWriter writer) throws IOException {
-        Document doc = page.getDocument();
-        if (doc == null) return;
-
-        // iterate through all links (a[href]) on the page and crawl them
-        for (Element link : doc.select("a[href]")) {
-            String nextUrl = link.absUrl("href");
-
-            // new website object with next depth
-            Website subPage = new Website(nextUrl, page.getDepth() + 1);
-            crawl(subPage, writer);
-        }
-    }
-
-    // formats output for the page, including headings and depth information
-    private String formatOutput(Website page, Document doc, boolean isPageAccessible) {
-        StringBuilder output = new StringBuilder();
-        String depthArrow = "-->".repeat(page.getDepth());
-
-        if (isPageAccessible) {
-            output.append("<br>").append(depthArrow).append(" link to <a>").append(page.getUrl()).append("</a>");
-            output.append("\n<br>depth: ").append(page.getDepth());
-            output.append("\n").append(formatHeadings(doc, page.getDepth()));
-
-        } else {
-            output.append("<br>").append(depthArrow).append(" broken link <a>").append(page.getUrl()).append("</a>");
-        }
-        return output.toString();
-    }
-
-    private String formatHeadings(Document document, int depth) {
-        StringBuilder formattedHeadings = new StringBuilder();
-        String baseIndent = "# ".repeat(depth);
-
-        // iterate through heading levels (h1 to h6) and format them
-        for (int level = 1; level <= 6; level++) {
-            for (Element heading : document.select("h" + level)) {
-                String headingPrefix = "#".repeat(level);
-                formattedHeadings.append("\n")
-                        .append(baseIndent)
-                        .append(headingPrefix)
-                        .append(" ")
-                        .append(heading.text());
-            }
-        }
-        return formattedHeadings.toString().trim();
-    }
-
-    private void writeLine(BufferedWriter writer, String content) throws IOException {
-        writer.write(content);
-        writer.newLine();
-        writer.flush();
+        return page.getDepth() <= maxDepth && isDomainAllowed(page.getUrl());
     }
 
     private void handleException(String message, Exception e) {

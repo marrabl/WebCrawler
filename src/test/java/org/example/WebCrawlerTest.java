@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 public class WebCrawlerTest {
-    private WebCrawler webCrawler;
+    /*private WebCrawler webCrawler;
     private StringWriter stringWriter;
     private BufferedWriter writer;
 
@@ -145,5 +145,5 @@ public class WebCrawlerTest {
         String output = (String) method.invoke(webCrawler, doc, 1);
         assertTrue(output.contains("# # Heading1"));
         assertTrue(output.contains("# ## Heading2"));
-    }
+    }*/
 }

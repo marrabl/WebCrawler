@@ -1,20 +1,29 @@
 package org.example;
 
-import org.jsoup.nodes.Document;
-
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
+import java.util.Map;
 
 public class Website {
-
     private final String url;
     private final int depth;
-    private Document document;
+    private Map<Integer, List<String>> headingsByLevel;
+    private List<Website> subPages;
+    private boolean isReachable = true;
+
 
     public Website(String url, int depth) {
         this.url = url;
         this.depth = depth;
     }
+
+    public boolean isReachable() {
+        return isReachable;
+    }
+
+    public void setReachable(boolean reachable) {
+        this.isReachable = reachable;
+    }
+
 
     public String getUrl() {
         return url;
@@ -24,12 +33,20 @@ public class Website {
         return depth;
     }
 
-    public Document getDocument() {
-        return document;
+    public Map<Integer, List<String>> getHeadingsByLevel() {
+        return headingsByLevel;
     }
 
-    public void setDocument(Document document) {
-        this.document = document;
+    public void setHeadingsByLevel(Map<Integer, List<String>> headingsByLevel) {
+        this.headingsByLevel = headingsByLevel;
+    }
+
+    public List<Website> getSubPages() {
+        return subPages != null ? subPages : List.of();
+    }
+
+    public void setSubPages(List<Website> subPages) {
+        this.subPages = subPages;
     }
 
 }
