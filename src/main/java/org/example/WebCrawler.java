@@ -48,6 +48,7 @@ public class WebCrawler {
 
         try {
             writeReport();
+
         } catch (InterruptedException e) {
             handleCrawlingInterruption(e);
         }
@@ -106,10 +107,9 @@ public class WebCrawler {
         return true;
     }
 
-    private boolean isMaxDepthReached(Website page){
+    private boolean isMaxDepthReached(Website page) {
         return page.getDepth() > maxDepth;
     }
-
 
     private void markLinkAsVisited(Website page) {
         visitedLinks.add(page.getUrl());
