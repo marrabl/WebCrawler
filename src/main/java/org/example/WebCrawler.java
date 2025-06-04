@@ -88,8 +88,28 @@ public class WebCrawler {
 
     // checks if crawling is allowed depending on domain, depth and already visited links
     private boolean crawlAllowed(Website page) {
-        return isEligibleForVisit(page) && !visitedLinks.contains(page.getUrl());
+        if (visitedLinks.contains(page.getUrl())) {
+            return false;
+        }
+
+        if (isMaxDepthReached(page)) {
+            logger.info("[" + Thread.currentThread().getName() + "] Stopped crawling " + page.getUrl()
+                    + " due to max depth reached (" + page.getDepth() + " > " + maxDepth + ").");
+            return false;
+        }
+
+        if (!isDomainAllowed(page.getUrl())) {
+            logger.info("[" + Thread.currentThread().getName() + "] Stopped crawling " + page.getUrl()
+                    + " because domain is not allowed.");
+            return false;
+        }
+        return true;
     }
+
+    private boolean isMaxDepthReached(Website page){
+        return page.getDepth() > maxDepth;
+    }
+
 
     private void markLinkAsVisited(Website page) {
         visitedLinks.add(page.getUrl());
