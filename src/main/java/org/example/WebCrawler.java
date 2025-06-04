@@ -1,5 +1,9 @@
 package org.example;
 
+import org.example.Fetcher.HtmlFetcher;
+import org.example.Fetcher.JsoupHtmlFetcher;
+import org.example.Writer.ReportWriter;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;

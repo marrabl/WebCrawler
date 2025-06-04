@@ -1,4 +1,6 @@
-package org.example;
+package org.example.Writer;
+
+import org.example.Website;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;

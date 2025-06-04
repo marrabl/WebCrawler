@@ -1,5 +1,6 @@
-package org.example;
+package org.example.Fetcher;
 
+import org.example.Website;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
