@@ -10,15 +10,23 @@ import java.util.*;
 public class JsoupHtmlFetcher implements HtmlFetcher {
 
     @Override
-    public Website fetch(String url, int depth) throws Exception {
-        Document doc = Jsoup.connect(url).get();
+    public Website fetch(String url, int depth) {
+        Website page = new Website(url, depth);
 
-        Website site = new Website(url, depth);
-        site.setHeadingsByLevel(extractHeadings(doc));
-        site.setSubPages(extractLinks(doc, depth));
+        try {
+            Document doc = Jsoup.connect(url).get();
+            page.setHeadingsByLevel(extractHeadings(doc));
+            page.setSubPages(extractLinks(doc, depth));
+            page.setReachable(true);
 
-        return site;
+        } catch (Exception e) {
+            page.setReachable(false);
+            page.setHeadingsByLevel(Collections.emptyMap());
+            page.setSubPages(Collections.emptyList());
+        }
+        return page;
     }
+
 
     private Map<Integer, List<String>> extractHeadings(Document doc) {
         Map<Integer, List<String>> headings = new HashMap<>();

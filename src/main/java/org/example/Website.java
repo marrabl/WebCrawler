@@ -8,11 +8,22 @@ public class Website {
     private final int depth;
     private Map<Integer, List<String>> headingsByLevel;
     private List<Website> subPages;
+    private boolean isReachable = true;
+
 
     public Website(String url, int depth) {
         this.url = url;
         this.depth = depth;
     }
+
+    public boolean isReachable() {
+        return isReachable;
+    }
+
+    public void setReachable(boolean reachable) {
+        this.isReachable = reachable;
+    }
+
 
     public String getUrl() {
         return url;

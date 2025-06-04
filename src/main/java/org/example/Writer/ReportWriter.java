@@ -24,8 +24,7 @@ public class ReportWriter implements Writer {
 
         for (Website page : pages) {
             try {
-                boolean isAccessible = page.getHeadingsByLevel() != null;
-                String output = formatOutput(page, isAccessible);
+                String output = formatOutput(page);
 
                 writer.write(output);
                 writer.newLine();
@@ -37,48 +36,49 @@ public class ReportWriter implements Writer {
         }
     }
 
-    private String formatOutput(Website page, boolean isAccessible) {
-        StringBuilder output = new StringBuilder();
-        String depthArrow = "-->".repeat(page.getDepth());
+    private String formatOutput(Website page) {
+        // start with whitespace to make the report look consistent
+        final String indent = "      ";
 
-        if (isAccessible) {
-            output.append("<br>")
-                    .append(depthArrow)
-                    .append(" link to <a>")
-                    .append(page.getUrl()).append("</a>");
+        StringBuilder sb = new StringBuilder();
 
-            output.append("\n<br>depth: ")
-                    .append(page.getDepth());
+        if (page.isReachable()) {
+            sb.append(indent)
+                    .append("- [link](")
+                    .append(page.getUrl())
+                    .append(") (depth: ")
+                    .append(page.getDepth())
+                    .append(")\n");
 
-            output.append("\n")
-                    .append(formatHeadings(page.getHeadingsByLevel(), page.getDepth()));
-        } else {
-            output.append("<br>")
-                    .append(depthArrow)
-                    .append(" broken link <a>")
-                    .append(page.getUrl()).append("</a>");
-        }
+            Map<Integer, List<String>> headings = page.getHeadingsByLevel();
+            if (headings != null && !headings.isEmpty()) {
+                sb.append(indent).append("Headings:\n");
 
-        return output.toString();
-    }
-
-    private String formatHeadings(Map<Integer, List<String>> headingsByLevel, int depth) {
-        if (headingsByLevel == null) return "";
-        StringBuilder result = new StringBuilder();
-        String baseIndent = "# ".repeat(depth);
-
-        for (int level = 1; level <= 6; level++) {
-            List<String> headings = headingsByLevel.get(level);
-            if (headings != null) {
-                for (String heading : headings) {
-                    result.append("\n")
-                            .append(baseIndent)
-                            .append("#".repeat(level))
-                            .append(" ")
-                            .append(heading);
+                for (int level = 1; level <= 6; level++) {
+                    List<String> levelHeadings = headings.get(level);
+                    if (levelHeadings != null) {
+                        for (String heading : levelHeadings) {
+                            sb.append(indent)
+                                    .append("#".repeat(level))
+                                    .append(" ")
+                                    .append(heading)
+                                    .append("\n");
+                        }
+                    }
                 }
             }
+
+        } else {
+            sb.append(indent)
+                    .append("- [Broken Link](")
+                    .append(page.getUrl())
+                    .append(") (depth: ")
+                    .append(page.getDepth())
+                    .append(")\n");
         }
-        return result.toString().trim();
+
+        sb.append("\n");
+
+        return sb.toString();
     }
 }

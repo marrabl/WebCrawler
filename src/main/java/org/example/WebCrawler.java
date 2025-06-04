@@ -109,13 +109,7 @@ public class WebCrawler {
     }
 
     private Website fetchWebsite(Website page) throws Exception {
-        try {
-            return fetcher.fetch(page.getUrl(), page.getDepth());
-
-        } catch (Exception e) {
-            handleException("[" + Thread.currentThread().getName() + "] Error fetching website: " + page.getUrl(), e);
-            throw new Exception("Website null", e);
-        }
+        return fetcher.fetch(page.getUrl(), page.getDepth());
     }
 
     // submits the task to the executor
