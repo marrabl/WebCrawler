@@ -18,7 +18,7 @@ cd webcrawler
 **Example:**
 
 ```sh
-./gradlew run --args="https://example.com 2 example.com"
+./gradlew run --args="https://example.com 2 example.com,iana.org" 
 ```
 
 - `<url>`: The starting URL (e.g. `https://example.com`)
@@ -32,15 +32,26 @@ The crawler generates a Markdown file named **`report.md`** in the same director
 Example content:
 
 ```markdown
-<br> link to <a>https://example.com</a>
-<br>depth: 0
-# Main Heading
-## Subheading
+- [link](https://example.com) (depth: 0)
+  Headings:
+  # Example Domain
 
-<br>--> broken link <a>https://example.com/404</a>
 
-<br>--> link to <a>https://example.com/subpage</a>
-<br>depth: 1
-# Heading on subpage
+- [link](https://www.iana.org/domains/example) (depth: 1)
+Headings:
+# Example Domains
+## Further Reading
+
+
+- [link](http://www.iana.org/go/rfc2606) (depth: 2)
+Headings:
+
+
+- [link](http://www.iana.org/domains/int) (depth: 2)
+Headings:
+# .INT Zone Management
+## Maintain
+## Policy & Procedures
+## Domain Names
 ```
 
