@@ -42,6 +42,14 @@ public class WebCrawler {
         }
     }
 
+    public WebCrawler(String startUrl, int maxDepth, Set<String> allowedDomains, HtmlFetcher fetcher, ReportWriter reportWriter) {
+        this.startUrl = startUrl;
+        this.maxDepth = maxDepth;
+        this.allowedDomains = allowedDomains;
+        this.fetcher = fetcher;
+        this.reportWriter = reportWriter;
+    }
+
     // starts the crawling process
     public void run() {
         initializeCrawling();
@@ -146,7 +154,7 @@ public class WebCrawler {
 
 
     // waits until all tasks of the executor are completed
-    private void waitForCompletion() throws InterruptedException {
+    void waitForCompletion() throws InterruptedException {
         boolean terminated = executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 
         // checks if executor terminated safley
